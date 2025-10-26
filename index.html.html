@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartToolVerse | Smart Tools. Smarter Workflow.</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #0a0f1f, #111827);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 40px;
+      z-index: 1000;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #00e0ff;
+      letter-spacing: 1px;
+    }
+
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      margin: 0 15px;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    nav a:hover {
+      color: #00e0ff;
+    }
+
+    main {
+      flex: 1;
+      margin-top: 100px;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .tagline {
+      font-size: 1.2rem;
+      color: #b0c4de;
+      margin-bottom: 40px;
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .tool-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 30px 20px;
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      backdrop-filter: blur(8px);
+    }
+
+    .tool-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 8px 25px rgba(0, 224, 255, 0.15);
+    }
+
+    .tool-icon {
+      font-size: 45px;
+      color: #00e0ff;
+      margin-bottom: 15px;
+    }
+
+    .tool-card h3 {
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+      color: #fff;
+    }
+
+    .tool-card p {
+      font-size: 0.9rem;
+      color: #c9d1d9;
+    }
+
+    .tool-card a {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 8px 16px;
+      background: #00e0ff;
+      color: #000;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.3s ease;
+    }
+
+    .tool-card a:hover {
+      background: #00b8d4;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.9rem;
+      color: #b0c4de;
+      background: rgba(255, 255, 255, 0.05);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    footer span {
+      color: #00e0ff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SmartToolVerse</h1>
+    <nav>
+      <a href="#">Home</a>
+      <a href="#">About</a>
+      <a href="#">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <h2 class="tagline">Smart Tools. Smarter Workflow.</h2>
+    <div class="tools-grid">
+      <div class="tool-card">
+        <div class="tool-icon">📄</div>
+        <h3>Compress PDF</h3>
+        <p>Reduce file size without losing quality.</p>
+        <a href="compress_pdf_single_file.html">Open Tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">🖼️</div>
+        <h3>JPG to PDF Converter</h3>
+        <p>Convert your images into a single PDF file.</p>
+        <a href="jpg_to_pdf_converter_single_file.html">Open Tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">🧮</div>
+        <h3>Age Calculator</h3>
+        <p>Instantly calculate your exact age in years and days.</p>
+        <a href="age_calculator_tool.html">Open Tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">🔠</div>
+        <h3>Text Case Converter</h3>
+        <p>Change text to upper, lower, or title case easily.</p>
+        <a href="text_case_converter.html">Open Tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">✍️</div>
+        <h3>Word Counter & Reading Time</h3>
+        <p>Analyze word count and reading time for any text.</p>
+        <a href="word_counter_reading_time.html">Open Tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">📷</div>
+        <h3>Image Resizer & Compressor</h3>
+        <p>Resize or compress images in seconds.</p>
+        <a href="image_resizer_compressor.html">Open Tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">🗂️</div>
+        <h3>PDF to JPG Converter</h3>
+        <p>Convert PDF pages into high-quality images.</p>
+        <a href="pdf_to_jpg_converter.html">Open Tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">🔗</div>
+        <h3>QR Code Generator</h3>
+        <p>Create custom QR codes in one click.</p>
+        <a href="qr_code_generator_single_file_html_css_js%20(1).html">Open Tool</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    © SmartToolVerse 2025 | Built with ❤️ by <span>SmartToolVerse Team</span>
+  </footer>
+</body>
+</html>
