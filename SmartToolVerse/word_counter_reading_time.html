@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Word Counter & Reading Time Tool</title>
+  <meta name="description" content="Quickly count words, characters, sentences and estimate reading time. Live updates, dark mode, copy and clear — all in one lightweight page." />
+  <!-- Favicon: tiny SVG data URI -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230f172a'/%3E%3Ctext x='50' y='57' font-size='48' text-anchor='middle' fill='%23f8fafc' font-family='Segoe UI, Roboto, Arial'%3EW%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root{
+      --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --accent:#6366f1; --glass: rgba(15,23,42,0.04);
+    }
+    [data-theme='dark']{
+      --bg:#071028; --card:#071430; --text:#e6eef8; --muted:#93b2d8; --accent:#7c3aed; --glass: rgba(255,255,255,0.04);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(99,102,241,0.06), transparent), var(--bg);
+      color:var(--text); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      padding:32px; display:flex; align-items:center; justify-content:center;
+    }
+
+    .wrap{width:min(960px,94vw)}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--accent), #06b6d4); display:grid;place-items:center;color:white;font-weight:700;box-shadow:0 6px 18px var(--glass);}
+    h1{font-size:20px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .controls{display:flex;gap:12px;align-items:center}
+    .toggle{background:var(--card);border:1px solid rgba(0,0,0,0.04);padding:6px;border-radius:999px;display:inline-flex;gap:6px;align-items:center}
+    .toggle button{background:transparent;border:0;padding:6px 10px;border-radius:999px;cursor:pointer;color:var(--muted)}
+    .toggle button.active{background:linear-gradient(90deg, rgba(99,102,241,0.12), rgba(124,58,237,0.08));color:var(--text)}
+
+    main{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 10px 30px var(--glass)}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    @media (max-width:880px){.grid{grid-template-columns:1fr}}
+
+    textarea#input{width:100%;min-height:320px;border-radius:10px;border:1px dashed rgba(15,23,42,0.06);padding:16px;font-size:15px;resize:vertical;background:transparent;color:var(--text);outline:none;transition:box-shadow .18s ease}
+    textarea#input:focus{box-shadow:0 8px 30px rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.12)}
+
+    .side{padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(99,102,241,0.02),transparent);min-height:160px}
+    .stat{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;transition:transform .12s ease, box-shadow .12s ease}
+    .stat:hover{transform:translateY(-4px);box-shadow:0 8px 20px var(--glass)}
+    .stat .label{color:var(--muted);font-size:13px}
+    .stat .value{font-weight:700;font-size:18px}
+
+    .controls-row{display:flex;gap:8px;margin-top:12px}
+    .btn{padding:10px 12px;border-radius:10px;border:0;cursor:pointer;background:linear-gradient(90deg,var(--accent),#06b6d4);color:white;font-weight:600;box-shadow:0 8px 20px rgba(99,102,241,0.12);transition:transform .12s ease,opacity .12s ease}
+    .btn.secondary{background:transparent;color:var(--text);border:1px solid rgba(15,23,42,0.06)}
+    .btn.icon{display:inline-flex;gap:8px;align-items:center}
+    .btn:active{transform:translateY(1px)}
+
+    footer{margin-top:12px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* small helpers */
+    .muted{color:var(--muted)}
+    .summary{background:linear-gradient(180deg, rgba(15,23,42,0.02), transparent); padding:12px;border-radius:8px;margin-top:12px;white-space:pre-wrap}
+
+    /* nice input labels */
+    .mini{display:flex;gap:8px;align-items:center}
+    .chip{padding:6px 10px;border-radius:999px;background:var(--card);border:1px solid rgba(0,0,0,0.04);font-weight:600}
+
+    .pulse{animation:pulse 3s infinite}
+    @keyframes pulse{0%{transform:translateY(0)}50%{transform:translateY(-3px)}100%{transform:translateY(0)}}
+
+  </style>
+</head>
+<body data-theme="light">
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden>W</div>
+        <div>
+          <h1>Word Counter & Reading Time</h1>
+          <p class="lead">Live counts for words, characters, sentences and estimated reading time.</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="toggle" role="toolbar" aria-label="Theme switch">
+          <button id="lightBtn" class="active" title="Light mode">Light</button>
+          <button id="darkBtn" title="Dark mode">Dark</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="grid">
+        <div>
+          <label for="input" class="sr-only">Enter text</label>
+          <textarea id="input" placeholder="Paste or type your text here..." aria-label="Text input"></textarea>
+
+          <div class="controls-row" style="margin-top:12px;">
+            <button id="clearBtn" class="btn secondary" title="Clear text">Clear</button>
+            <button id="copyBtn" class="btn icon" title="Copy summary">Copy Summary</button>
+            <div style="flex:1"></div>
+            <div class="mini muted">Avg reading speed: <span style="margin-left:8px" class="chip">200 wpm</span></div>
+          </div>
+
+          <div class="summary" id="summaryOutput" aria-live="polite" style="margin-top:10px"></div>
+        </div>
+
+        <aside class="side">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="stat" title="Word count">
+              <div>
+                <div class="label">Words</div>
+                <div class="value" id="wordCount">0</div>
+              </div>
+              <div class="muted">Live</div>
+            </div>
+
+            <div class="stat" title="Character count">
+              <div>
+                <div class="label">Characters (no spaces)</div>
+                <div class="value" id="charCount">0</div>
+              </div>
+              <div class="muted">No spaces</div>
+            </div>
+
+            <div class="stat" title="Character count including spaces">
+              <div>
+                <div class="label">Characters (with spaces)</div>
+                <div class="value" id="charWithSpaces">0</div>
+              </div>
+              <div class="muted">With spaces</div>
+            </div>
+
+            <div class="stat" title="Sentence count">
+              <div>
+                <div class="label">Sentences</div>
+                <div class="value" id="sentenceCount">0</div>
+              </div>
+              <div class="muted">≈</div>
+            </div>
+
+            <div class="stat" title="Estimated reading time">
+              <div>
+                <div class="label">Estimated reading time</div>
+                <div class="value" id="readingTime">0 min</div>
+              </div>
+              <div class="muted">200 wpm</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <footer>
+        Tip: Use keyboard shortcut <kbd>Ctrl</kbd> + <kbd>A</kbd> then <kbd>Ctrl</kbd> + <kbd>C</kbd> to quickly copy text.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    (function(){
+      const input = document.getElementById('input');
+      const wordCountEl = document.getElementById('wordCount');
+      const charCountEl = document.getElementById('charCount');
+      const charWithSpacesEl = document.getElementById('charWithSpaces');
+      const sentenceCountEl = document.getElementById('sentenceCount');
+      const readingTimeEl = document.getElementById('readingTime');
+      const summaryOutput = document.getElementById('summaryOutput');
+      const clearBtn = document.getElementById('clearBtn');
+      const copyBtn = document.getElementById('copyBtn');
+      const lightBtn = document.getElementById('lightBtn');
+      const darkBtn = document.getElementById('darkBtn');
+      const body = document.body;
+
+      const READING_WPM = 200;
+
+      function sanitize(text){
+        // normalize newlines and trim
+        return text.replace(/\u00A0/g,' ').replace(/\r\n?/g,'\n');
+      }
+
+      function countWords(text){
+        if(!text) return 0;
+        // split on whitespace, but ignore empty entries
+        const words = text.trim().split(/\s+/).filter(Boolean);
+        return words.length;
+      }
+
+      function countCharactersNoSpaces(text){
+        if(!text) return 0;
+        return text.replace(/\s/g,'').length;
+      }
+
+      function countCharactersWithSpaces(text){
+        if(!text) return 0;
+        return text.length;
+      }
+
+      function countSentences(text){
+        if(!text) return 0;
+        // a simple heuristic: split on [.?!] followed by space/newline or end
+        const matches = text.match(/[^.!?\n]+[.!?]+(\s|$)|[^.!?\n]+$/g);
+        if(!matches) return 0;
+        // filter out whitespace-only
+        return matches.map(s=>s.trim()).filter(Boolean).length;
+      }
+
+      function estimateReadingTime(words){
+        if(words === 0) return '0 min';
+        const minutes = words / READING_WPM;
+        if(minutes < 1) return Math.ceil(minutes * 60) + ' sec';
+        const whole = Math.floor(minutes);
+        const rem = Math.round((minutes - whole) * 60);
+        return whole + (rem ? ' min ' + rem + ' sec' : ' min');
+      }
+
+      function generateSummary(text){
+        const sanitized = sanitize(text);
+        const words = countWords(sanitized);
+        const charsNoSpaces = countCharactersNoSpaces(sanitized);
+        const charsWithSpaces = countCharactersWithSpaces(sanitized);
+        const sentences = countSentences(sanitized);
+        const reading = estimateReadingTime(words);
+
+        const summary = `Words: ${words}\nCharacters (no spaces): ${charsNoSpaces}\nCharacters (with spaces): ${charsWithSpaces}\nSentences: ${sentences}\nEstimated reading time (at ${READING_WPM} wpm): ${reading}`;
+        return {summary, words, charsNoSpaces, charsWithSpaces, sentences, reading};
+      }
+
+      function update(){
+        const text = input.value;
+        const data = generateSummary(text);
+        wordCountEl.textContent = data.words;
+        charCountEl.textContent = data.charsNoSpaces;
+        charWithSpacesEl.textContent = data.charsWithSpaces;
+        sentenceCountEl.textContent = data.sentences;
+        readingTimeEl.textContent = data.reading;
+        summaryOutput.textContent = data.summary;
+      }
+
+      // initial empty update
+      update();
+
+      // live update with debounce for performance
+      let typingTimer = null;
+      input.addEventListener('input', ()=>{
+        if(typingTimer) clearTimeout(typingTimer);
+        // immediate UI update but debounce heavy ops
+        typingTimer = setTimeout(update, 150);
+      });
+
+      clearBtn.addEventListener('click', ()=>{
+        input.value = '';
+        update();
+        input.focus();
+      });
+
+      copyBtn.addEventListener('click', async ()=>{
+        try{
+          await navigator.clipboard.writeText(summaryOutput.textContent);
+          copyBtn.textContent = 'Copied ✓';
+          setTimeout(()=> copyBtn.textContent = 'Copy Summary', 1400);
+        }catch(e){
+          // fallback for older browsers
+          const ta = document.createElement('textarea');
+          ta.value = summaryOutput.textContent;
+          document.body.appendChild(ta);
+          ta.select();
+          try{ document.execCommand('copy'); copyBtn.textContent = 'Copied ✓'; setTimeout(()=> copyBtn.textContent = 'Copy Summary', 1400);}catch(e2){
+            alert('Unable to copy.');
+          }
+          ta.remove();
+        }
+      });
+
+      // theme toggles
+      lightBtn.addEventListener('click', ()=>{ body.setAttribute('data-theme','light'); lightBtn.classList.add('active'); darkBtn.classList.remove('active'); });
+      darkBtn.addEventListener('click', ()=>{ body.setAttribute('data-theme','dark'); darkBtn.classList.add('active'); lightBtn.classList.remove('active'); });
+
+      // keyboard shortcuts: Ctrl+K to clear, Ctrl+Shift+C to copy summary
+      document.addEventListener('keydown', (e)=>{
+        if((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 'k'){
+          e.preventDefault(); input.value = ''; update();
+        }
+        if((e.ctrlKey||e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c'){
+          e.preventDefault(); copyBtn.click();
+        }
+      });
+
+      // store in localStorage to preserve contents (small, light)
+      const STORAGE_KEY = 'word_counter_text_v1';
+      window.addEventListener('beforeunload', ()=>{
+        try{ localStorage.setItem(STORAGE_KEY, input.value || ''); }catch(e){}
+      });
+      // load
+      try{ const saved = localStorage.getItem(STORAGE_KEY); if(saved){ input.value = saved; update(); } }catch(e){}
+
+      // accessibility: expose ARIA live politely when content changes
+      const obs = new MutationObserver(()=>{
+        summaryOutput.setAttribute('aria-live','polite');
+      });
+      obs.observe(summaryOutput, {childList:true,characterData:true,subtree:true});
+
+    })();
+  </script>
+</body>
+</html>

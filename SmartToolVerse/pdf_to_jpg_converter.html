@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF to JPG Converter — Fast client-side PDF page to JPG</title>
+  <meta name="description" content="Convert PDF pages to high-quality JPG images in your browser. No server uploads — privacy-first, fast, and responsive." />
+
+  <!-- pdf.js (only external dependency allowed) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+  <style>
+    /* Tailwind-style utilities (subset) */
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#94a3b8; --accent1:#7c3aed; --accent2:#06b6d4; --glass: rgba(255,255,255,0.06);
+      --text:#e6eef8; --success:#10b981; --danger:#ef4444; --shadow: 0 6px 20px rgba(2,6,23,0.6);
+    }
+    [data-theme="light"]{ --bg:#f8fafc; --card:#ffffff; --muted:#475569; --accent1:#7c3aed; --accent2:#06b6d4; --glass: rgba(2,6,23,0.04); --text:#0b1220; --shadow: 0 6px 20px rgba(12,15,20,0.06);} 
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;color:var(--text);background:linear-gradient(180deg,var(--bg),#071025);}
+    .container{max-width:1100px;margin:40px auto;padding:24px}
+
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:var(--shadow)}
+    h1{font-size:18px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:16px;padding:22px;box-shadow:var(--shadow);display:grid;grid-template-columns:1fr 380px;gap:18px}
+    .left{padding:6px}
+    .right{padding:6px}
+
+    .drop{border:2px dashed var(--glass);border-radius:12px;padding:22px;text-align:center;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    .file-info{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:12px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(2,6,23,0.45);}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text);box-shadow:none}
+    .muted{color:var(--muted);font-size:13px}
+
+    .progress-wrap{height:12px;background:rgba(255,255,255,0.04);border-radius:999px;overflow:hidden;margin-top:12px}
+    .progress{height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent1));transition:width .25s ease}
+
+    .previews{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+    .thumb{width:120px;border-radius:8px;overflow:hidden;background:#0b1220;padding:6px;display:flex;flex-direction:column;align-items:center}
+    .thumb img{width:100%;display:block}
+    .thumb small{margin-top:6px;color:var(--muted);font-size:12px}
+
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+
+    .toolbar{display:flex;gap:10px;align-items:center}
+    .toggle{display:inline-flex;align-items:center;gap:8px;padding:6px;border-radius:999px;background:var(--glass);cursor:pointer}
+
+    /* responsive */
+    @media (max-width:880px){.card{grid-template-columns:1fr}.right{order:2}.left{order:1}}
+
+    /* Loading animation */
+    .loader{width:40px;height:40px;border-radius:50%;background:linear-gradient(90deg,var(--accent1),var(--accent2));position:relative;animation:spin 1.6s linear infinite}
+    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+    .error{color:var(--danger);background:rgba(239,68,68,0.06);padding:8px;border-radius:8px;margin-top:10px}
+
+    .small{font-size:12px}
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">PDF</div>
+        <div>
+          <h1>PDF to JPG Converter</h1>
+          <p class="lead">Convert PDF pages to JPG images — fully client-side, private & fast.</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="toggle" id="themeToggle" title="Toggle light/dark">
+          <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+          <span class="small muted">Theme</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="card">
+      <section class="left">
+        <div class="drop" id="dropZone">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div class="loader" id="miniLoader" style="display:none"></div>
+            <div style="font-weight:600;font-size:15px">Drop PDF here or click to select</div>
+            <div class="muted small">Supports multi-page PDFs. All conversion happens in your browser.</div>
+            <input id="fileInput" type="file" accept="application/pdf" style="display:none" />
+            <div style="margin-top:12px">
+              <button class="btn" id="chooseBtn">Choose PDF</button>
+              <button class="btn ghost" id="resetBtn">Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="file-info" id="fileInfo" style="display:none">
+          <div>
+            <div id="fname" style="font-weight:600"></div>
+            <div class="muted small" id="fsize"></div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted small">Pages: <span id="pageCount">0</span></div>
+            <div id="status" class="muted small">Idle</div>
+          </div>
+        </div>
+
+        <div class="progress-wrap" style="display:none" id="progressWrap">
+          <div class="progress" id="progressBar"></div>
+        </div>
+
+        <div id="error" style="display:none" class="error"></div>
+
+        <div class="previews" id="previews"></div>
+      </section>
+
+      <aside class="right">
+        <div style="background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:12px;padding:16px">
+          <h3 style="margin:0 0 8px 0">Convert settings</h3>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label class="muted small">Quality (JPEG)</label>
+            <input type="range" id="quality" min="10" max="100" value="90" />
+
+            <label class="muted small">Scale (render size)</label>
+            <input type="range" id="scale" min="1" max="3" step="0.1" value="1.5" />
+
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+              <button class="btn" id="convertBtn">Convert</button>
+              <button class="btn ghost" id="zipBtn">Download All as ZIP</button>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <div class="muted small">Preview images below. Use Reset to clear.</div>
+            </div>
+
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      <div>Made with ❤️ — Client-side only. No files are uploaded.</div>
+    </footer>
+  </div>
+
+  <script>
+    // Basic UI references
+    const fileInput = document.getElementById('fileInput');
+    const chooseBtn = document.getElementById('chooseBtn');
+    const dropZone = document.getElementById('dropZone');
+    const resetBtn = document.getElementById('resetBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fname = document.getElementById('fname');
+    const fsize = document.getElementById('fsize');
+    const status = document.getElementById('status');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar = document.getElementById('progressBar');
+    const previews = document.getElementById('previews');
+    const errorBox = document.getElementById('error');
+    const convertBtn = document.getElementById('convertBtn');
+    const zipBtn = document.getElementById('zipBtn');
+    const miniLoader = document.getElementById('miniLoader');
+    const pageCountEl = document.getElementById('pageCount');
+    const themeToggle = document.getElementById('themeToggle');
+
+    const qualityInput = document.getElementById('quality');
+    const scaleInput = document.getElementById('scale');
+
+    let pdfDoc = null;
+    let currentFile = null;
+    let images = []; // {name, blob, dataURL}
+
+    // Theme toggle
+    themeToggle.addEventListener('click', ()=>{
+      const el = document.body;
+      if(el.getAttribute('data-theme') === 'dark') el.setAttribute('data-theme','light'); else el.setAttribute('data-theme','dark');
+    });
+
+    // Drag & drop
+    ;['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.style.borderColor='rgba(255,255,255,0.12)'}));
+    ;['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.style.borderColor='transparent'}));
+    dropZone.addEventListener('drop', async (e)=>{
+      const dt = e.dataTransfer; if(!dt) return;
+      const f = dt.files[0]; if(!f) return;
+      handleFile(f);
+    });
+    chooseBtn.addEventListener('click',()=>fileInput.click());
+    fileInput.addEventListener('change',(e)=>{const f=e.target.files[0]; if(f) handleFile(f)});
+    resetBtn.addEventListener('click',resetAll);
+
+    function humanBytes(bytes){if(bytes===0) return '0 B'; const k=1024; const sizes=['B','KB','MB','GB','TB']; const i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k,i)).toFixed(2)) + ' ' + sizes[i];}
+
+    function showError(msg){errorBox.style.display='block'; errorBox.textContent=msg;}
+    function clearError(){errorBox.style.display='none'; errorBox.textContent='';}
+
+    async function handleFile(file){
+      resetAll(false);
+      clearError();
+      if(file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')){ showError('Invalid file. Please upload a PDF.'); return; }
+      currentFile = file;
+      fname.textContent = file.name;
+      fsize.textContent = humanBytes(file.size);
+      fileInfo.style.display='flex';
+      status.textContent = 'Loaded';
+      // Load with pdf.js
+      miniLoader.style.display='block';
+      try{
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+        const loadingTask = pdfjsLib.getDocument({data:uint8});
+        pdfDoc = await loadingTask.promise;
+        pageCountEl.textContent = pdfDoc.numPages;
+        status.textContent = 'Ready to convert';
+      }catch(err){
+        console.error(err);
+        showError('Failed to read PDF: '+ (err && err.message ? err.message : err));
+        status.textContent = 'Error';
+      }finally{miniLoader.style.display='none'}
+    }
+
+    convertBtn.addEventListener('click', async ()=>{
+      clearError();
+      if(!pdfDoc){ showError('No PDF loaded. Please choose a PDF file.'); return; }
+      images = [];
+      previews.innerHTML='';
+      progressWrap.style.display='block';
+      progressBar.style.width='0%';
+      status.textContent = 'Converting...';
+
+      const total = pdfDoc.numPages;
+      for(let i=1;i<=total;i++){
+        try{
+          progressBar.style.width = (((i-1)/total)*100) + '%';
+          const page = await pdfDoc.getPage(i);
+          const viewport = page.getViewport({scale:1});
+          const scale = parseFloat(scaleInput.value) || 1.5;
+          const scaledViewport = page.getViewport({scale: viewport.scale * scale});
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = Math.floor(scaledViewport.width);
+          canvas.height = Math.floor(scaledViewport.height);
+
+          const renderContext = {canvasContext: context, viewport: scaledViewport};
+          await page.render(renderContext).promise;
+          // Convert canvas to blob/jpeg
+          const quality = (parseInt(qualityInput.value)||90)/100;
+          const dataURL = canvas.toDataURL('image/jpeg', quality);
+          const blob = dataURLToBlob(dataURL);
+          const name = `${currentFile.name.replace(/\.pdf$/i,'')}_page_${String(i).padStart(3,'0')}.jpg`;
+          images.push({name, blob, dataURL});
+
+          // show preview
+          const thumb = document.createElement('div'); thumb.className='thumb';
+          const img = document.createElement('img'); img.src = dataURL; img.alt = name;
+          const small = document.createElement('small'); small.textContent = name;
+          thumb.appendChild(img); thumb.appendChild(small);
+          previews.appendChild(thumb);
+
+          progressBar.style.width = ((i/total)*100) + '%';
+          status.textContent = `Converted ${i}/${total}`;
+          await new Promise(r=>setTimeout(r,100)); // small pause to keep UI responsive
+        }catch(err){ console.error('page render error',err); showError('Error converting page '+i+': '+err.message); status.textContent='Error'; break; }
+      }
+      status.textContent = 'Conversion complete';
+    });
+
+    // ZIP creation (store method, uncompressed) ------------------------------------------------
+    // Build a simple ZIP file in the browser (no external libs). Uses uncompressed entries (method 0) and CRC32.
+
+    function crc32(buf){
+      // buf = Uint8Array
+      const table = crc32.table || (crc32.table = (function(){
+        let c; const table = new Uint32Array(256);
+        for(let n=0;n<256;n++){ c = n; for(let k=0;k<8;k++){ c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); } table[n]=c; } return table; })());
+      let crc = 0 ^ (-1);
+      for (let i=0;i<buf.length;i++) crc = (crc >>> 8) ^ table[(crc ^ buf[i]) & 0xFF];
+      return (crc ^ (-1)) >>> 0;
+    }
+
+    async function blobToArrayBuffer(blob){ return await blob.arrayBuffer(); }
+
+    function strToU8(s){
+      const encoder = new TextEncoder(); return encoder.encode(s);
+    }
+
+    function u32ToLE(n){ return [n & 0xFF, (n>>>8)&0xFF, (n>>>16)&0xFF, (n>>>24)&0xFF]; }
+
+    async function buildZip(entries){
+      // entries: [{name:string, data:Uint8Array}]
+      const files = [];
+      const centralDir = [];
+      let offset = 0;
+      for(const e of entries){
+        const nameU8 = strToU8(e.name);
+        const data = e.data;
+        const crc = crc32(data);
+        const compressedSize = data.length; // store method
+        const uncompressedSize = data.length;
+
+        // local file header
+        const localHeader = [];
+        localHeader.push(...u32ToLE(0x04034b50)); // local file header signature
+        localHeader.push(...[20,0]); // version needed to extract (2 bytes)
+        localHeader.push(...[0,0]); // general purpose bit flag
+        localHeader.push(...[0,0]); // compression method (0 = store)
+        localHeader.push(...u32ToLE(0).slice(0,2)); // mod time/date placeholder (2 bytes each) we'll put zeros
+        localHeader.push(...u32ToLE(crc)); // crc32
+        localHeader.push(...u32ToLE(compressedSize));
+        localHeader.push(...u32ToLE(uncompressedSize));
+        localHeader.push(...u32ToLE(nameU8.length).slice(0,2)); // file name length
+        localHeader.push(...[0,0]); // extra field length
+
+        const localBuf = new Uint8Array(localHeader.length + nameU8.length + data.length);
+        let p=0; for(const b of localHeader) localBuf[p++]=b;
+        localBuf.set(nameU8,p); p+=nameU8.length;
+        localBuf.set(data,p);
+
+        files.push(localBuf);
+
+        // central directory header
+        const cdh = [];
+        cdh.push(...u32ToLE(0x02014b50)); // central file header signature
+        cdh.push(...[0,0]); // version made by
+        cdh.push(...[20,0]); // version needed to extract
+        cdh.push(...[0,0]); // general purpose
+        cdh.push(...[0,0]); // compression method
+        cdh.push(...u32ToLE(0).slice(0,2)); // mod time/date
+        cdh.push(...u32ToLE(crc));
+        cdh.push(...u32ToLE(compressedSize));
+        cdh.push(...u32ToLE(uncompressedSize));
+        cdh.push(...u32ToLE(nameU8.length).slice(0,2));
+        cdh.push(...[0,0]); // extra
+        cdh.push(...[0,0]); // file comment length
+        cdh.push(...[0,0]); // disk number start
+        cdh.push(...[0,0]); // internal file attrs
+        cdh.push(...u32ToLE(0)); // external file attrs
+        cdh.push(...u32ToLE(offset)); // relative offset of local header
+
+        const cdbuf = new Uint8Array(cdh.length + nameU8.length);
+        let q=0; for(const b of cdh) cdbuf[q++]=b;
+        cdbuf.set(nameU8,q);
+
+        centralDir.push(cdbuf);
+
+        offset += localBuf.length;
+      }
+
+      // end of central directory
+      const centralSize = centralDir.reduce((s,buf)=>s+buf.length,0);
+      const centralOffset = offset;
+
+      const parts = [...files, ...centralDir];
+
+      const eocd = [];
+      eocd.push(...u32ToLE(0x06054b50)); // end of central dir signature
+      eocd.push(...[0,0]); // number of this disk
+      eocd.push(...[0,0]); // disk where central dir starts
+      const totalEntries = entries.length;
+      eocd.push(...[totalEntries & 0xFF, (totalEntries>>>8)&0xFF]);
+      eocd.push(...[totalEntries & 0xFF, (totalEntries>>>8)&0xFF]);
+      eocd.push(...u32ToLE(centralSize));
+      eocd.push(...u32ToLE(centralOffset));
+      eocd.push(...[0,0]); // comment length
+
+      // concat all into one Uint8Array
+      const totalLen = parts.reduce((s,b)=>s+b.length,0) + eocd.length;
+      const out = new Uint8Array(totalLen);
+      let pos=0; for(const part of parts){ out.set(part,pos); pos += part.length; }
+      out.set(new Uint8Array(eocd),pos);
+      return out.buffer;
+    }
+
+    zipBtn.addEventListener('click', async ()=>{
+      clearError();
+      if(images.length===0){ showError('No images to zip. Convert a PDF first.'); return; }
+      zipBtn.disabled=true; zipBtn.textContent='Preparing ZIP...';
+      try{
+        const entries = [];
+        for(const it of images){
+          const ab = new Uint8Array(await blobToArrayBuffer(it.blob));
+          entries.push({name:it.name, data:ab});
+        }
+        const zipBuf = await buildZip(entries);
+        const blob = new Blob([zipBuf],{type:'application/zip'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = currentFile ? (currentFile.name.replace(/\.pdf$/i,'') + '.zip') : 'images.zip';
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        zipBtn.textContent='Download All as ZIP';
+      }catch(err){ console.error(err); showError('Failed to build ZIP: '+err.message); }
+      finally{ zipBtn.disabled=false; }
+    });
+
+    function dataURLToBlob(dataurl){
+      const arr = dataurl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length; const u8 = new Uint8Array(n);
+      while(n--) u8[n] = bstr.charCodeAt(n);
+      return new Blob([u8],{type:mime});
+    }
+
+    function resetAll(clearFile=true){
+      pdfDoc = null; currentFile = null; images = []; previews.innerHTML=''; fileInfo.style.display='none'; progressWrap.style.display='none'; status.textContent = 'Idle'; pageCountEl.textContent='0'; clearError();
+      if(clearFile) fileInput.value='';
+    }
+
+    // small accessibility: allow Enter to trigger file pick
+    dropZone.addEventListener('click',()=>fileInput.click());
+
+    // keyboard shortcuts: C to convert, R to reset
+    window.addEventListener('keydown', (e)=>{
+      if(e.key.toLowerCase()==='c') convertBtn.click();
+      if(e.key.toLowerCase()==='r') resetBtn.click();
+    });
+
+    // pdf.js worker config if available
+    if(window.pdfjsLib){
+      if(pdfjsLib.GlobalWorkerOptions) {
+        // try to use the same CDN location for worker
+        try{ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js'; }catch(e){}
+      }
+    }
+  </script>
+</body>
+</html>

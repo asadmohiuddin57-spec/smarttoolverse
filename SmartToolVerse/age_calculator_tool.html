@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="title" content="Age Calculator Tool">
+  <meta name="description" content="A modern and responsive Age Calculator Tool to find your exact age and days until next birthday.">
+  <title>Age Calculator Tool</title>
+  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2920/2920258.png" type="image/png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      transition: background 0.5s, color 0.5s;
+    }
+
+    body.dark {
+      background: linear-gradient(135deg, #1f1f1f, #3b3b3b);
+      color: #f5f5f5;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      padding: 2rem;
+      border-radius: 1.5rem;
+      text-align: center;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 1s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    input[type="date"] {
+      padding: 0.7rem;
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    button {
+      background: linear-gradient(135deg, #43cea2, #185a9d);
+      border: none;
+      color: white;
+      padding: 0.8rem 1.2rem;
+      margin: 0.3rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .result {
+      margin-top: 1.5rem;
+      font-size: 1.1rem;
+      line-height: 1.8rem;
+    }
+
+    .toggle-mode {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 1.2rem;
+    }
+
+    footer {
+      position: absolute;
+      bottom: 10px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #fff;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <button class="toggle-mode" onclick="toggleMode()">🌙</button>
+  <div class="container">
+    <h1>Age Calculator</h1>
+    <input type="date" id="birthdate">
+    <div>
+      <button onclick="calculateAge()">Calculate Age</button>
+      <button onclick="resetForm()">Reset</button>
+    </div>
+    <div class="result" id="result"></div>
+  </div>
+  <footer>© 2025 Age Calculator Tool</footer>
+
+  <script>
+    const body = document.body;
+    const result = document.getElementById('result');
+
+    function toggleMode() {
+      body.classList.toggle('dark');
+      const btn = document.querySelector('.toggle-mode');
+      btn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
+    }
+
+    function calculateAge() {
+      const birthInput = document.getElementById('birthdate').value;
+      if (!birthInput) {
+        alert('Please select your birthdate!');
+        return;
+      }
+
+      const birthDate = new Date(birthInput);
+      const today = new Date();
+
+      let years = today.getFullYear() - birthDate.getFullYear();
+      let months = today.getMonth() - birthDate.getMonth();
+      let days = today.getDate() - birthDate.getDate();
+
+      if (days < 0) {
+        months--;
+        days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+      }
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+
+      const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+      if (nextBirthday < today) nextBirthday.setFullYear(today.getFullYear() + 1);
+      const diff = nextBirthday - today;
+      const daysUntilBirthday = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+      result.innerHTML = `🎉 You are <b>${years}</b> years, <b>${months}</b> months, and <b>${days}</b> days old.<br>🎂 Days until next birthday: <b>${daysUntilBirthday}</b>`;
+    }
+
+    function resetForm() {
+      document.getElementById('birthdate').value = '';
+      result.innerHTML = '';
+    }
+  </script>
+</body>
+</html>

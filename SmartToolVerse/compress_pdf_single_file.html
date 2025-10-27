@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- SEO meta tags -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Compress PDF — Fast & Private</title>
+  <meta name="description" content="Compress PDF files in your browser. No server upload — private, fast client-side compression with preview and adjustable quality." />
+  <meta name="keywords" content="compress pdf, pdf compressor, client-side pdf, pdf reduce size, pdf optimization" />
+  <link rel="icon" href="data:;base64,iVBORw0KGgo="> <!-- placeholder favicon -->
+  <!-- Minimal, modern styles -->
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#ffffff; --muted:#6b7280; --accent:#4f46e5; --success:#10b981; --danger:#ef4444; --glass: rgba(255,255,255,0.6);
+      color-scheme: light;
+    }
+    [data-theme="dark"]{
+      --bg:#0b1220; --card:#071023; --muted:#94a3b8; --accent:#7c3aed; --success:#10b981; --danger:#fb7185; --glass: rgba(0,0,0,0.5);
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;color:var(--muted);background:linear-gradient(180deg,var(--bg),rgba(0,0,0,0));}
+    header{display:flex;align-items:center;justify-content:space-between;padding:1rem;max-width:1100px;margin:0 auto}
+    .logo{display:flex;align-items:center;gap:.75rem}
+    .logo .mark{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#06b6d4);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    main{max-width:1100px;margin:1rem auto;padding:1rem}
+    .card{background:var(--card);border-radius:14px;padding:1rem;box-shadow:0 6px 24px rgba(2,6,23,0.06);}
+
+    /* layout */
+    .grid{display:grid;grid-template-columns:1fr;gap:1rem}
+    @media(min-width:900px){.grid{grid-template-columns:480px 1fr;align-items:start}}
+
+    /* upload area */
+    .upload{border:2px dashed rgba(100,116,139,0.15);padding:1.5rem;border-radius:12px;text-align:center;cursor:pointer}
+    .upload.dragover{background:var(--glass);border-color:var(--accent)}
+    .upload input{display:none}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem .8rem;border-radius:10px;border:0;background:var(--accent);color:white;font-weight:600;cursor:pointer}
+    .ghost{background:transparent;border:1px solid rgba(100,116,139,0.12);color:var(--muted)}
+
+    /* details */
+    .details{display:flex;flex-direction:column;gap:.5rem}
+    .row{display:flex;gap:1rem;align-items:center}
+    .file-info{display:flex;gap:0.6rem;align-items:center}
+    .thumb{width:140px;height:180px;border-radius:8px;background:linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.02));display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .meta{font-size:.95rem;color:var(--muted)}
+
+    /* controls */
+    .controls{display:flex;gap:.6rem;flex-wrap:wrap}
+    input[type=range]{width:100%}
+
+    /* progress */
+    .progress{height:10px;background:rgba(0,0,0,0.06);border-radius:999px;overflow:hidden}
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#06b6d4);width:0%}
+
+    footer{max-width:1100px;margin:1rem auto;text-align:center;color:var(--muted);font-size:.9rem}
+
+    /* small helpers */
+    .muted{color:var(--muted);font-size:.92rem}
+    .success{color:var(--success);font-weight:600}
+    .danger{color:var(--danger)}
+    .hidden{display:none}
+  </style>
+  <!-- CDN libraries: PDF.js for rendering pages, pdf-lib for creating new PDF -->
+  <script src="https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body data-theme="light">
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="mark" aria-hidden>CP</div>
+      <div>
+        <div style="font-weight:700;color:var(--muted);font-size:1.05rem">Compress PDF</div>
+        <div style="font-size:.82rem;color:var(--muted)">Private — client-side only</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <button id="themeToggle" class="btn ghost" aria-pressed="false" title="Toggle light / dark">Toggle Theme</button>
+      <a href="#" class="btn" id="demoDownload" style="display:none">Download</a>
+    </div>
+  </header>
+
+  <!-- Main UI -->
+  <main>
+    <div class="grid">
+      <!-- Left column: upload & settings -->
+      <section class="card" aria-labelledby="uploader-title">
+        <h2 id="uploader-title" style="margin:0 0 .6rem 0;color:var(--muted)">Upload PDF</h2>
+
+        <label class="upload" id="dropZone" tabindex="0" role="button" aria-label="Upload or drop PDF file here">
+          <input id="fileInput" type="file" accept="application/pdf" aria-label="Choose a PDF file" />
+          <div style="font-weight:700;color:var(--muted)">Drop PDF here or click to select</div>
+          <div class="muted" style="font-size:.9rem;margin-top:.45rem">Supports single PDF up to 50MB (client-side). No server upload.</div>
+        </label>
+
+        <div style="margin-top:1rem" class="details">
+          <div class="row">
+            <div class="file-info" id="fileSummary" aria-live="polite">
+              <!-- file summary populated by JS -->
+              <div class="muted">No file selected</div>
+            </div>
+          </div>
+
+          <div style="margin-top:.6rem">
+            <label for="quality" style="display:block;font-weight:600;margin-bottom:.25rem;color:var(--muted)">Quality: <span id="qualityLabel">80%</span></label>
+            <input type="range" id="quality" min="10" max="100" value="80" step="1" aria-label="Compression quality percentage" />
+            <div class="muted" style="font-size:.85rem;margin-top:.4rem">Choose lower quality for smaller size. Try medium (50–70%) for good balance.</div>
+          </div>
+
+          <div style="margin-top:.8rem;display:flex;gap:.6rem;align-items:center">
+            <button id="compressBtn" class="btn" disabled>Compress</button>
+            <button id="resetBtn" class="btn ghost" type="button">Reset</button>
+            <div style="flex:1"></div>
+            <div id="statusMsg" class="muted" aria-live="polite"></div>
+          </div>
+
+          <div style="margin-top:1rem">
+            <div class="progress" aria-hidden><i id="progressBar"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right column: preview & results -->
+      <aside class="card" aria-labelledby="preview-title">
+        <h3 id="preview-title" style="margin:0 0 .6rem 0;color:var(--muted)">Before / After Preview</h3>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+          <div style="flex:0 0 140px" class="thumb" id="originalThumb" title="Original first page preview">
+            <div class="muted">No preview</div>
+          </div>
+
+          <div style="flex:1;min-width:180px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700;color:var(--muted)">File details</div>
+            </div>
+
+            <div style="margin-top:.5rem">
+              <div class="meta">Filename: <span id="name">—</span></div>
+              <div class="meta">Original size: <span id="origSize">—</span></div>
+              <div class="meta">Estimated compressed: <span id="estSize">—</span></div>
+              <div class="meta">Pages: <span id="pageCount">—</span></div>
+            </div>
+
+            <div style="margin-top:.9rem;display:flex;gap:.5rem;align-items:center">
+              <button id="previewCompressedBtn" class="btn ghost" disabled>Preview Compressed</button>
+              <button id="downloadBtn" class="btn" disabled>Download Compressed PDF</button>
+            </div>
+
+            <div id="successMsg" class="hidden" style="margin-top:.75rem;font-weight:600"></div>
+          </div>
+        </div>
+
+        <hr style="margin:1rem 0;border:none;border-top:1px solid rgba(100,116,139,0.06)">
+
+        <div>
+          <div style="font-weight:700;color:var(--muted);margin-bottom:.5rem">Compressed first page</div>
+          <div class="thumb" id="compressedThumb"><div class="muted">No preview</div></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <div>Made with care • Client-side only • Keyboard accessible</div>
+  </footer>
+
+  <!-- Script logic -->
+  <script>
+    // Short aliases for libraries
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
+    const { PDFDocument } = window['PDFLib'];
+
+    // Elements
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileSummary = document.getElementById('fileSummary');
+    const origThumb = document.getElementById('originalThumb');
+    const compressedThumb = document.getElementById('compressedThumb');
+    const nameEl = document.getElementById('name');
+    const origSizeEl = document.getElementById('origSize');
+    const estSizeEl = document.getElementById('estSize');
+    const pageCountEl = document.getElementById('pageCount');
+    const quality = document.getElementById('quality');
+    const qualityLabel = document.getElementById('qualityLabel');
+    const compressBtn = document.getElementById('compressBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const progressBar = document.getElementById('progressBar');
+    const statusMsg = document.getElementById('statusMsg');
+    const previewCompressedBtn = document.getElementById('previewCompressedBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const successMsg = document.getElementById('successMsg');
+    const themeToggle = document.getElementById('themeToggle');
+
+    // State
+    let currentFile = null;
+    let pdfDocProxy = null;
+    let compressedPdfBytes = null;
+    let estimatedBytes = null;
+    let pageCount = 0;
+
+    // Helpers
+    function formatBytes(bytes){
+      if (!bytes) return '—';
+      const units = ['B','KB','MB','GB']; let i=0; while(bytes>=1024 && i<units.length-1){bytes/=1024;i++}
+      return bytes.toFixed(bytes>=10?0:1)+ ' ' + units[i];
+    }
+
+    function setStatus(text, isError){
+      statusMsg.textContent = text || '';
+      statusMsg.className = isError ? 'danger' : 'muted';
+    }
+
+    function setProgress(p){
+      progressBar.style.width = Math.max(0,Math.min(100,p)) + '%';
+    }
+
+    // File validation
+    function validateFile(file){
+      if(!file) return 'No file provided.';
+      if(file.type !== 'application/pdf') return 'Invalid file type. Please upload a PDF.';
+      if(file.size > 50 * 1024 * 1024) return 'File too large. Maximum 50MB allowed.';
+      return null;
+    }
+
+    // UI updates when a file is selected
+    async function handleFile(file){
+      const err = validateFile(file);
+      if(err){ setStatus(err,true); return; }
+      currentFile = file;
+      nameEl.textContent = file.name;
+      origSizeEl.textContent = formatBytes(file.size);
+      pageCountEl.textContent = 'Loading...';
+      setStatus('Loading PDF…');
+      compressBtn.disabled = false;
+      previewCompressedBtn.disabled = true;
+      downloadBtn.disabled = true;
+      successMsg.classList.add('hidden');
+
+      // load pdf via PDF.js
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({data:arrayBuffer});
+      pdfDocProxy = await loadingTask.promise;
+      pageCount = pdfDocProxy.numPages;
+      pageCountEl.textContent = pageCount;
+      setStatus('Rendering preview…');
+
+      // render first page as thumbnail
+      const page = await pdfDocProxy.getPage(1);
+      const viewport = page.getViewport({scale:1.2});
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = Math.min(1200, viewport.width); // cap width to avoid heavy memory usage
+      const scale = canvas.width / viewport.width;
+      const renderViewport = page.getViewport({scale: scale});
+      canvas.height = renderViewport.height;
+      const renderContext = {canvasContext: ctx, viewport: renderViewport};
+      await page.render(renderContext).promise;
+
+      // show thumbnail image
+      origThumb.innerHTML = '';
+      const img = document.createElement('img'); img.src = canvas.toDataURL('image/png'); img.alt='Original first page'; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; origThumb.appendChild(img);
+      setStatus('Ready');
+
+      // estimate naive compressed size using quality slider and JPEG sample
+      const q = +quality.value/100;
+      const blob = await new Promise(res=>canvas.toBlob(res,'image/jpeg',q));
+      const est = Math.max(2000, Math.round((blob.size * pageCount) * 1.05)); // add small overhead
+      estimatedBytes = est;
+      estSizeEl.textContent = formatBytes(est);
+    }
+
+    // Compression pipeline: render pages -> convert to JPEG with quality -> embed in new PDF
+    async function compressPdf(){
+      if(!pdfDocProxy){ setStatus('No PDF loaded.',true); return; }
+      compressBtn.disabled = true; resetBtn.disabled = true; setProgress(0); setStatus('Compressing...');
+      const q = Math.max(0.1, Math.min(1, +quality.value/100));
+      qualityLabel.textContent = Math.round(q*100) + '%';
+
+      const outPdf = await PDFDocument.create();
+      const total = pageCount;
+      let processed = 0;
+      const sizes = [];
+
+      for(let i=1;i<=total;i++){
+        // render page
+        const page = await pdfDocProxy.getPage(i);
+        const viewport = page.getViewport({scale:1.0});
+        // choose scale based on quality to reduce pixel area for low quality
+        const scaleFactor = (q >= 0.8) ? 1.25 : (q >= 0.5 ? 1.0 : 0.75);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = Math.min(1400, Math.round(viewport.width * scaleFactor));
+        const renderViewport = page.getViewport({scale: canvas.width / viewport.width});
+        canvas.height = renderViewport.height;
+        await page.render({canvasContext:ctx, viewport:renderViewport}).promise;
+
+        // convert to JPEG blob with chosen quality
+        const blob = await new Promise(res=>canvas.toBlob(res,'image/jpeg',q));
+        const arr = await blob.arrayBuffer();
+        sizes.push(blob.size);
+
+        // embed into pdf-lib
+        let img;
+        try{ img = await outPdf.embedJpg(arr); }
+        catch(e){
+          // fallback to PNG if JPG embedding fails
+          const pngArr = await new Promise(async (r)=>{
+            const pngBlob = await new Promise(res2=>canvas.toBlob(res2,'image/png'));
+            r(await pngBlob.arrayBuffer());
+          });
+          img = await outPdf.embedPng(pngArr);
+        }
+
+        const imgDims = img.scale(1);
+        const pageNew = outPdf.addPage([imgDims.width, imgDims.height]);
+        pageNew.drawImage(img,{x:0,y:0,width:imgDims.width,height:imgDims.height});
+
+        processed++;
+        const percent = Math.round((processed/total)*100);
+        setProgress(percent);
+        setStatus(`Processed ${processed} / ${total} pages…`);
+        // allow UI updates
+        await new Promise(r=>setTimeout(r,50));
+      }
+
+      setStatus('Finalizing PDF…');
+      const pdfBytes = await outPdf.save();
+      compressedPdfBytes = pdfBytes;
+      // compute estimated size from actual result
+      const compressedSize = pdfBytes.byteLength;
+      estSizeEl.textContent = formatBytes(compressedSize);
+      setProgress(100);
+      setStatus('Compression complete');
+      successMsg.textContent = `Done — compressed file is ${formatBytes(compressedSize)}.`;
+      successMsg.classList.remove('hidden');
+      previewCompressedBtn.disabled = false;
+      downloadBtn.disabled = false;
+      resetBtn.disabled = false;
+      compressBtn.disabled = false;
+
+      // show compressed first page
+      const firstPageBytes = await generateFirstPagePreview(pdfBytes);
+      compressedThumb.innerHTML = '';
+      const imgEl = document.createElement('img'); imgEl.src = firstPageBytes; imgEl.alt = 'Compressed first page'; imgEl.style.width='100%'; imgEl.style.height='100%'; imgEl.style.objectFit='cover'; compressedThumb.appendChild(imgEl);
+    }
+
+    // Create an image data URL for first page of compressed PDF using pdf-lib to extract first page as image
+    async function generateFirstPagePreview(pdfBytes){
+      try{
+        // load back using PDF.js to render page 1
+        const uint8 = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
+        const loadingTask = pdfjsLib.getDocument({data:uint8});
+        const doc = await loadingTask.promise;
+        const page = await doc.getPage(1);
+        const viewport = page.getViewport({scale:1.5});
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({canvasContext:ctx,viewport}).promise;
+        return canvas.toDataURL('image/jpeg',0.85);
+      }catch(e){
+        return null;
+      }
+    }
+
+    // Download helper
+    function downloadCompressed(){
+      if(!compressedPdfBytes) return;
+      const blob = new Blob([compressedPdfBytes],{type:'application/pdf'});
+      const now = new Date();
+      const pad = n=>String(n).padStart(2,'0');
+      const fname = `compressed-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),10000);
+      setStatus('Download started');
+    }
+
+    // Reset UI
+    function resetAll(){
+      currentFile = null; pdfDocProxy = null; compressedPdfBytes = null; estimatedBytes = null; pageCount = 0;
+      fileInput.value = '';
+      nameEl.textContent = '—'; origSizeEl.textContent='—'; estSizeEl.textContent='—'; pageCountEl.textContent='—';
+      origThumb.innerHTML = '<div class="muted">No preview</div>';
+      compressedThumb.innerHTML = '<div class="muted">No preview</div>';
+      compressBtn.disabled = true; previewCompressedBtn.disabled = true; downloadBtn.disabled = true;
+      setProgress(0); setStatus(''); successMsg.classList.add('hidden');
+    }
+
+    // Event wiring
+    dropZone.addEventListener('click', ()=> fileInput.click());
+    dropZone.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); fileInput.click(); }});
+    fileInput.addEventListener('change', async (e)=>{ if(e.target.files && e.target.files[0]) await handleFile(e.target.files[0]); });
+
+    // Drag & drop
+    ['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev,(e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev,(e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); }));
+    dropZone.addEventListener('drop', async (e)=>{ const f = e.dataTransfer.files && e.dataTransfer.files[0]; if(f) await handleFile(f); });
+
+    // quality slider
+    quality.addEventListener('input', ()=>{ qualityLabel.textContent = quality.value + '%'; if(currentFile && pdfDocProxy){ // quick re-estimate of compressed size using first page
+      (async()=>{
+        setStatus('Estimating...');
+        try{
+          const page = await pdfDocProxy.getPage(1);
+          const vp = page.getViewport({scale:1});
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = Math.min(1200, vp.width);
+          const renderViewport = page.getViewport({scale: canvas.width / vp.width});
+          canvas.height = renderViewport.height;
+          await page.render({canvasContext:ctx,viewport:renderViewport}).promise;
+          const q = +quality.value/100;
+          const blob = await new Promise(res=>canvas.toBlob(res,'image/jpeg',q));
+          const est = Math.max(2000, Math.round((blob.size * pageCount) * 1.05));
+          estimatedBytes = est; estSizeEl.textContent = formatBytes(est);
+          setStatus('Estimate updated');
+        }catch(e){ setStatus('Estimate failed',true); }
+      })(); }
+    });
+
+    compressBtn.addEventListener('click', async ()=>{
+      try{ await compressPdf(); }catch(e){ console.error(e); setStatus('Compression failed: ' + (e.message||e), true); compressBtn.disabled=false; resetBtn.disabled=false; }
+    });
+    previewCompressedBtn.addEventListener('click', ()=>{
+      if(!compressedPdfBytes) return; window.open(URL.createObjectURL(new Blob([compressedPdfBytes],{type:'application/pdf'})),'_blank');
+    });
+    downloadBtn.addEventListener('click', downloadCompressed);
+    resetBtn.addEventListener('click', resetAll);
+
+    // Theme toggle
+    themeToggle.addEventListener('click', ()=>{
+      const body = document.body; const isDark = body.getAttribute('data-theme') === 'dark';
+      body.setAttribute('data-theme', isDark ? 'light':'dark');
+      themeToggle.setAttribute('aria-pressed', (!isDark).toString());
+    });
+
+    // keyboard accessibility for buttons
+    [compressBtn, resetBtn, previewCompressedBtn, downloadBtn].forEach(b=>{ b.addEventListener('keyup',(e)=>{ if(e.key==='Enter' || e.key===' ') b.click(); }); });
+
+    // initialize
+    resetAll();
+  </script>
+</body>
+</html>
